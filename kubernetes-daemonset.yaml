@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vmwareguest-exporter
+  labels:
+    app: vmwareguest-exporter
+spec:
+  selector:
+    matchLabels:
+      app: vmwareguest-exporter
+  template:
+    metadata:
+      labels:
+        app: vmwareguest-exporter
+      annotations:
+        ad.datadoghq.com/vmwareguest-exporter.check_names: '["prometheus"]'
+        ad.datadoghq.com/vmwareguest-exporter.init_configs: '[{}]'
+        ad.datadoghq.com/vmwareguest-exporter.instances: |
+          [
+            {
+              "prometheus_url": "http://%%host%%:9263/metrics",
+              "namespace": "system",
+              "metrics": ["vmwareguest_*"]
+            }
+          ]
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - name: vmwareguest-exporter
+        image: quay.io/praseodym/vmwareguest-exporter:latest
+        imagePullPolicy: Always
+        ports:
+        - name: metrics
+          containerPort: 9263
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: metrics
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        resources:
+          requests:
+            cpu: 5m
+            memory: 8Mi
+          limits:
+            memory: 16Mi
